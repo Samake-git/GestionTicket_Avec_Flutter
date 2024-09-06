@@ -4,9 +4,7 @@ import 'package:ticketiong/pages/AfficherTermeUtilisation.dart';
 import 'package:ticketiong/pages/Formateur_Dashbord.dart';
 import 'package:ticketiong/pages/PageInfoUtilisateurs.dart';
 import 'package:ticketiong/pages/connexion.dart';
-
-
-
+import 'package:adaptive_theme/adaptive_theme.dart';
 
 class SettingsPage extends StatefulWidget {
   @override
@@ -14,7 +12,31 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  bool _isDarkMode = false;
+  bool darkmode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    getCurrentTheme();
+  }
+
+  Future getCurrentTheme() async {
+    final themeMode = await AdaptiveTheme.getThemeMode();
+    setState(() {
+      darkmode = themeMode == AdaptiveThemeMode.dark;
+    });
+  }
+
+  void toggleTheme(bool value) {
+    setState(() {
+      darkmode = value;
+      if (darkmode) {
+        AdaptiveTheme.of(context).setDark();
+      } else {
+        AdaptiveTheme.of(context).setLight();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +44,7 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(
         toolbarHeight: 140.0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white,),
+          icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.pushReplacement(
               context,
@@ -43,19 +65,16 @@ class _SettingsPageState extends State<SettingsPage> {
             Text('Boakry SAMAKA'),
           ],
         ),
-
       ),
-
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ListTile(
-              leading: Icon(Icons.person, color: Colors.blue,),
+              leading: Icon(Icons.person, color: Colors.blue),
               title: Text('Mon Compte'),
               onTap: () {
-                // Naviguer vers la page du compte utilisateur
                 Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
@@ -65,18 +84,16 @@ class _SettingsPageState extends State<SettingsPage> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.notifications, color: Colors.blue,),
+              leading: Icon(Icons.notifications, color: Colors.blue),
               title: Text('Notifications'),
               onTap: () {
-                // Naviguer vers la page des notifications
                 Navigator.pushNamed(context, '/notifications');
               },
             ),
             ListTile(
-              leading: Icon(Icons.description, color: Colors.blue,),
+              leading: Icon(Icons.description, color: Colors.blue),
               title: Text('Termes d\'utilisation'),
               onTap: () {
-                // Naviguer vers la page des termes d'utilisation
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -86,30 +103,18 @@ class _SettingsPageState extends State<SettingsPage> {
               },
             ),
             ListTile(
-              leading: Icon(Icons.logout, color: Colors.blue,),
+              leading: Icon(Icons.logout, color: Colors.blue),
               title: Text('Déconnexion'),
               onTap: () {
-                // Déconnecter l'utilisateur de l'application
                 _logout();
               },
             ),
-            ListTile(
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Mode Sombre'),
-                  Switch(
-                    value: _isDarkMode,
-                    onChanged: (value) {
-                      setState(() {
-                        _isDarkMode = value;
-                      });
-                      _updateTheme();
-                    },
-                  ),
-                ],
-              ),
-              leading: Icon(Icons.brightness_4, color: Colors.blue,),
+            SwitchListTile(
+              title: Text('Mode sombre'),
+              activeColor: Colors.orange,
+              secondary: Icon(darkmode ? Icons.dark_mode : Icons.light_mode),
+              value: darkmode,
+              onChanged: toggleTheme,
             ),
           ],
         ),
@@ -135,40 +140,5 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       );
     }
-  }
-
-
-
-  void _updateTheme() {
-    setState(() {
-      _isDarkMode = !_isDarkMode;
-    });
-
-    // Mettre à jour le thème de l'application
-    _applyTheme();
-  }
-
-  void _applyTheme() {
-    if (_isDarkMode) {
-      // Définir le thème sombre
-      ThemeData darkTheme = ThemeData.dark();
-      // Appliquer le thème sombre à l'application
-      _updateAppTheme(darkTheme);
-    } else {
-      // Définir le thème clair
-      ThemeData lightTheme = ThemeData.light();
-      // Appliquer le thème clair à l'application
-      _updateAppTheme(lightTheme);
-    }
-  }
-
-  void _updateAppTheme(ThemeData newTheme) {
-    // Mettre à jour le thème de l'application ici
-    // Par exemple, en utilisant la méthode `Theme.of(context).copyWith()`
-    Theme.of(context).copyWith(
-      brightness: newTheme.brightness,
-      primaryColor: newTheme.primaryColor,
-      // Autres propriétés du thème à mettre à jour
-    );
   }
 }

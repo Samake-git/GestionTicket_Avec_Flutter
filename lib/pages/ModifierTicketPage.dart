@@ -1,19 +1,45 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class AddTicketPage extends StatefulWidget {
+class EditTicketPage extends StatefulWidget {
+  static const routeName = '/edit-ticket';
+  final String ticketId;
+
+  EditTicketPage({required this.ticketId});
+
   @override
-  _AddTicketPageState createState() => _AddTicketPageState();
+  _EditTicketPageState createState() => _EditTicketPageState();
 }
 
-class _AddTicketPageState extends State<AddTicketPage> {
+class _EditTicketPageState extends State<EditTicketPage> {
   final TextEditingController _titleController = TextEditingController();
   String _selectedCategory = 'Pratique';
   String _selectedPriority = 'Élevée';
   final TextEditingController _descriptionController = TextEditingController();
+  bool _isLoading = true;
 
-  Future<void> _createNewTicket() async {
+  @override
+  void initState() {
+    super.initState();
+    _loadTicketData();
+  }
+
+  Future<void> _loadTicketData() async {
+    DocumentSnapshot ticketSnapshot = await FirebaseFirestore.instance
+        .collection('tickets')
+        .doc(widget.ticketId)
+        .get();
+
+    setState(() {
+      _titleController.text = ticketSnapshot['titre'];
+      _selectedCategory = ticketSnapshot['categorie'];
+      _selectedPriority = ticketSnapshot['priorite'];
+      _descriptionController.text = ticketSnapshot['description'];
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _updateTicket() async {
     String titre = _titleController.text.trim();
     String categorie = _selectedCategory;
     String priorite = _selectedPriority;
@@ -21,26 +47,20 @@ class _AddTicketPageState extends State<AddTicketPage> {
 
     if (titre.isNotEmpty && description.isNotEmpty) {
       try {
-        User? currentUser = FirebaseAuth.instance.currentUser;
-        if (currentUser != null) {
-          CollectionReference ticketRef = FirebaseFirestore.instance.collection('tickets');
-          await ticketRef.add({
-            'titre': titre,
-            'categorie': categorie,
-            'priorite': priorite,
-            'description': description,
-            'dateSoumission': FieldValue.serverTimestamp(),
-            'apprenantId': currentUser.uid,
-            'statut': 'En Attente',
-          });
+        DocumentReference ticketDoc = FirebaseFirestore.instance.collection('tickets').doc(widget.ticketId);
+        await ticketDoc.update({
+          'titre': titre,
+          'categorie': categorie,
+          'priorite': priorite,
+          'description': description,
+          'dateModification': FieldValue.serverTimestamp(),
+        });
 
-          _resetForm();
-          Navigator.of(context).pop();
-        }
+        Navigator.of(context).pop();
       } catch (e) {
-        print('Erreur lors de la création du ticket : $e');
+        print('Erreur lors de la modification du ticket : $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Une erreur est survenue lors de la création du ticket.')),
+          SnackBar(content: Text('Une erreur est survenue lors de la modification du ticket.')),
         );
       }
     } else {
@@ -48,13 +68,6 @@ class _AddTicketPageState extends State<AddTicketPage> {
         SnackBar(content: Text('Veuillez remplir tous les champs obligatoires.')),
       );
     }
-  }
-
-  void _resetForm() {
-    _titleController.clear();
-    _selectedCategory = 'Pratique';
-    _selectedPriority = 'Élevée';
-    _descriptionController.clear();
   }
 
   @override
@@ -66,7 +79,7 @@ class _AddTicketPageState extends State<AddTicketPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         elevation: 0,
-        title: Text('Ajouter un ticket', style: TextStyle(color: Theme.of(context).textTheme.titleLarge!.color)),
+        title: Text('Modifier le ticket', style: TextStyle(color: Theme.of(context).textTheme.titleLarge!.color)),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Theme.of(context).iconTheme.color),
           onPressed: () {
@@ -74,7 +87,9 @@ class _AddTicketPageState extends State<AddTicketPage> {
           },
         ),
       ),
-      body: Column(
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : Column(
         children: [
           Expanded(
             child: Padding(
@@ -178,10 +193,9 @@ class _AddTicketPageState extends State<AddTicketPage> {
             color: Theme.of(context).bottomAppBarColor,
             padding: EdgeInsets.symmetric(vertical: 16.0, horizontal: 19.0),
             child: ElevatedButton(
-              onPressed: _createNewTicket,
-              child: Text('Ajouter'),
+              onPressed: _updateTicket,
+              child: Text('Modifier'),
               style: ElevatedButton.styleFrom(
-
                 minimumSize: Size.fromHeight(50),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8.0),

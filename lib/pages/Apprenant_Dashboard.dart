@@ -1,13 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:ticketiong/Widget/OptionTicketItem.dart';
 import 'package:ticketiong/model/TicketModel.dart';
 import 'package:ticketiong/pages/AddTicketPage.dart';
+import 'package:ticketiong/pages/ModifierTicketPage.dart';
 import 'package:ticketiong/pages/PageTicketDiscussion.dart';
 import 'package:ticketiong/pages/Parametre.dart';
 import 'package:ticketiong/pages/TicketDetailsPage.dart';
-
 
 class ApprenaantDashboard extends StatefulWidget {
   @override
@@ -24,6 +23,68 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
     _getUserId();
   }
 
+  void _deleteTicket(Ticket ticket) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('tickets')
+          .doc(ticket.id)
+          .delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ticket supprimé avec succès')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la suppression du ticket')),
+      );
+    }
+  }
+
+  Future<void> _checkTicketStatusAndNavigate(BuildContext context, String ticketId) async {
+    try {
+      DocumentSnapshot ticketSnapshot = await FirebaseFirestore.instance
+          .collection('tickets')
+          .doc(ticketId)
+          .get();
+
+      if (!ticketSnapshot.exists) {
+        throw Exception('Le ticket avec cet ID n\'existe pas.');
+      }
+
+      String ticketStatus = ticketSnapshot['statut'];
+
+      if (ticketStatus == 'résolu') {
+        // Affichez un message si le ticket est résolu
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text('Modification impossible'),
+              content: Text('Ce ticket a été résolu et ne peut pas être modifié.'),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: Text('OK'),
+                ),
+              ],
+            );
+          },
+        );
+      } else {
+        // Si le ticket n'est pas résolu, naviguez vers la page de modification
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (context) => EditTicketPage(ticketId: ticketId),
+        ));
+      }
+    } catch (e) {
+      print('Erreur lors de la vérification du statut du ticket : $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur lors de la vérification du statut du ticket.')),
+      );
+    }
+  }
+
   Future<void> _getUserId() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
@@ -36,20 +97,19 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar:  _selectedIndex != 2 ? AppBar(
-        backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: _selectedIndex != 2 ? AppBar(
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         leading: SizedBox(),
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications, color: Colors.black),
+            icon: Icon(Icons.notifications, color: Theme.of(context).iconTheme.color),
             onPressed: () {
               // Logique de notification
             },
           ),
         ],
       ) : null,
-
       body: Column(
         children: [
           Expanded(
@@ -58,8 +118,7 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
               child: _buildBody(),
             ),
           ),
-          if (_selectedIndex ==
-              0) // Afficher le bouton flottant uniquement sur la page d'accueil
+          if (_selectedIndex == 0) // Afficher le bouton flottant uniquement sur la page d'accueil
             Padding(
               padding: EdgeInsets.only(right: 16.0, bottom: 16.0),
               child: Align(
@@ -69,7 +128,7 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
                     _navigateToAddTicketPage();
                   },
                   child: Icon(Icons.add),
-                  backgroundColor: Colors.blue,
+                  backgroundColor: Theme.of(context).floatingActionButtonTheme.backgroundColor,
                   shape: CircleBorder(),
                 ),
               ),
@@ -93,6 +152,8 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
             label: 'Profil',
           ),
         ],
+        selectedItemColor: Theme.of(context).bottomNavigationBarTheme.selectedItemColor,
+        unselectedItemColor: Theme.of(context).bottomNavigationBarTheme.unselectedItemColor,
       ),
     );
   }
@@ -133,18 +194,14 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
               children: [
                 Text(
                   'Bonjour, Bienvenue',
-                  style: TextStyle(
-                    fontSize: 24.0,
+                  style: Theme.of(context).textTheme.headlineMedium!.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 SizedBox(height: 4.0),
                 Text(
                   'Nous sommes ravis de vous accueillir !',
-                  style: TextStyle(
-                    fontSize: 16.0,
-                    color: Colors.grey,
-                  ),
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ],
             ),
@@ -154,11 +211,12 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
         TextField(
           decoration: InputDecoration(
             hintText: 'Que recherchez-vous ?',
-            prefixIcon: Icon(Icons.search),
+            prefixIcon: Icon(Icons.search, color: Theme.of(context).iconTheme.color),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8.0),
             ),
           ),
+          style: Theme.of(context).textTheme.bodyLarge,
         ),
         SizedBox(height: 20.0),
         Expanded(
@@ -166,11 +224,9 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
             stream: _userId != null
                 ? FirebaseFirestore.instance
                 .collection('tickets')
-                .where('apprenantId',
-                isEqualTo: _userId) // Filtrage par ID utilisateur
+                .where('apprenantId', isEqualTo: _userId)
                 .snapshots()
                 : Stream.empty(),
-            // Flux vide si l'ID utilisateur n'est pas encore disponible
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: CircularProgressIndicator());
@@ -193,12 +249,11 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
                 itemBuilder: (context, index) {
                   final ticket = tickets[index];
                   return _buildTicketItem(
-                    ticket: ticket,  // Passer l'objet Ticket complet ici
-                    context: context, // Passer le contexte
+                    ticket: ticket,
+                    context: context,
                   );
                 },
               );
-
             },
           ),
         ),
@@ -219,8 +274,6 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
       _selectedIndex = index;
     });
   }
-
-
 
   Widget _buildTicketItem({
     required Ticket ticket,
@@ -245,6 +298,7 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
         );
       },
       child: Card(
+        color: Theme.of(context).cardColor,
         elevation: 2.0,
         child: Padding(
           padding: EdgeInsets.all(10.0),
@@ -257,8 +311,7 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
                   children: [
                     Text(
                       ticket.titre,
-                      style: TextStyle(
-                        fontSize: 18.0,
+                      style: Theme.of(context).textTheme.titleLarge!.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -268,14 +321,16 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
                         Text(
                           'Statut: ${ticket.statut}',
                           style: TextStyle(
-                            color: ticket.statut == 'résolu' ? Colors.green : Colors.orange,
+                            color: ticket.statut == 'résolu'
+                                ? Theme.of(context).colorScheme.secondary
+                                : Theme.of(context).colorScheme.primary,
                           ),
                         ),
                         SizedBox(width: 16.0),
                         Text(
                           'Créé le: ${ticket.dateSoumission}',
                           style: TextStyle(
-                            color: Colors.grey,
+                            color: Theme.of(context).textTheme.bodyMedium!.color?.withOpacity(0.6),
                           ),
                         ),
                       ],
@@ -283,28 +338,21 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
                   ],
                 ),
               ),
-              TicketItemOptions(
-                ticket: ticket,
-                onDelete: () async {
-                  try {
-                    // Supprimer le ticket de Firebase Firestore
-                    await FirebaseFirestore.instance
-                        .collection('tickets')
-                        .doc(ticket.id)
-                        .delete();
-
-                    // Mettre à jour l'interface utilisateur après la suppression
-                    setState(() {});
-                  } catch (e) {
-                    // Gérer l'erreur de suppression et afficher un message
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Erreur lors de la suppression du ticket: $e')),
-                    );
-                  }
-                },
-                onEdit: () {
-                 //
-                },
+              Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.edit, color: Theme.of(context).iconTheme.color),
+                    onPressed: () {
+                      _checkTicketStatusAndNavigate(context, ticket.id);
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.delete, color: Theme.of(context).colorScheme.error),
+                    onPressed: () {
+                      _deleteTicket(ticket);
+                    },
+                  ),
+                ],
               ),
             ],
           ),
@@ -312,7 +360,4 @@ class _ApprenaantDashboardState extends State<ApprenaantDashboard> {
       ),
     );
   }
-
-
-
 }

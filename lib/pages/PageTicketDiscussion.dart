@@ -26,7 +26,7 @@ class _TicketDiscussionsOverviewPageState extends State<TicketDiscussionsOvervie
     final currentUserId = _auth.currentUser?.uid;
 
     if (currentUserId != null) {
-      // Récupérer les tickets où l'utilisateur est apprenant ou formateur
+      // Récupérer les tickets où l'utilisateur est soit apprenant, soit formateur
       final ticketsSnapshot = await _firestore
           .collection('tickets')
           .where('apprenantId', isEqualTo: currentUserId)
@@ -38,16 +38,26 @@ class _TicketDiscussionsOverviewPageState extends State<TicketDiscussionsOvervie
           .get();
 
       // Concaténer les listes de tickets
+      List<QueryDocumentSnapshot> allTickets = [
+        ...ticketsSnapshot.docs,
+        ...formateurTicketsSnapshot.docs,
+      ];
+
+      // Supprimer les doublons
+      allTickets = allTickets.toSet().toList();
+
+      // Filtrer les tickets pour ne garder que ceux qui ont à la fois un apprenant et un formateur
+      final filteredTickets = allTickets.where((ticket) {
+        final data = ticket.data() as Map<String, dynamic>;
+        return data['apprenantId'] != null && data['assignedUserId'] != null;
+      }).toList();
+
       setState(() {
-        _tickets = [
-          ...ticketsSnapshot.docs,
-          ...formateurTicketsSnapshot.docs,
-        ];
-        // Supprimer les doublons
-        _tickets = _tickets.toSet().toList();
+        _tickets = filteredTickets;
       });
     }
   }
+
 
   Future<void> _listenForNewNotifications() async {
     final currentUserId = _auth.currentUser?.uid;
