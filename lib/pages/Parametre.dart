@@ -100,6 +100,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     builder: (context) => VisualiserTermesPage(),
                   ),
                 );
+
               },
             ),
             ListTile(

@@ -182,6 +182,7 @@ class _AddTicketPageState extends State<AddTicketPage> {
               child: Text('Ajouter'),
               style: ElevatedButton.styleFrom(
 
+
                 minimumSize: Size.fromHeight(50),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8.0),
